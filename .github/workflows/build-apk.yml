@@ -35,33 +35,36 @@ jobs:
       - name: Prepare Named APK
         run: |
           mkdir -p release-apk
-          cp app/build/outputs/apk/debug/*.apk release-apk/YouTubePure-v1.0.0.apk
+          cp app/build/outputs/apk/debug/*.apk release-apk/YouTubePure-v1.1.0.apk
           ls -la release-apk/
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubePure-v1.0.0-APK
-          path: release-apk/YouTubePure-v1.0.0.apk
+          name: YouTubePure-v1.1.0-APK
+          path: release-apk/YouTubePure-v1.1.0.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish Direct APK to GitHub Releases (Phone Accessible)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "YouTube Pure v1.0.0 (Direct Phone Download)"
+          tag_name: v1.1.0
+          name: "YouTube Pure v1.1.0 (Liquid Glass Edition)"
           body: |
-            ### 📱 Download for Android Phone
-            Tap **`YouTubePure-v1.0.0.apk`** below to download and install directly on your device.
+            ### 📱 Download YouTube Pure v1.1.0
+            Tap **`YouTubePure-v1.1.0.apk`** below to download and install directly on your Android phone.
 
-            #### Features in this build:
-            - 🚫 **No Shorts**: Bottom navigation tab removed & scrolling feed shelves completely blocked.
-            - 🚫 **No Video Ads**: Fast network-level ad blocking + auto-skipping.
-            - 🎧 **Background Play**: Audio playback continues with screen off or app minimized.
-            - 📺 **Fullscreen**: Automatic landscape rotation on video expansion.
-            - ⚡ **Lightweight**: Pure native WebView shell (~4.6 MB).
-          files: release-apk/YouTubePure-v1.0.0.apk
+            #### 🌟 What's New in v1.1.0:
+            - 💎 **Liquid Glass UI**: Frosted glassmorphic header, bottom navigation bar, and filter chips.
+            - 🚫 **Removed "Open in App"**: Purged all sticky install banners, app-switch prompts, and upsells.
+            - 🔄 **Swipe-to-Refresh**: Native pull-down to refresh feeds with YouTube red progress indicator.
+            - ⏪⏩ **Double-Tap Seek**: Double-tap left/right on video to jump ±10s with frosted glass ripple feedback.
+            - 📺 **Native Picture-in-Picture (PiP)**: Video minimizes to a floating window when returning to home screen.
+            - 🚫 **No Shorts**: Bottom tab & infinite scrolling shelves completely eliminated.
+            - 🚫 **Zero Video Ads**: Multi-layer ad domain filtering and automatic video ad-skip.
+            - 🎧 **Background Playback**: Audio continues playing with screen turned off.
+          files: release-apk/YouTubePure-v1.1.0.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,8 +73,8 @@ jobs:
         run: |
           echo "## 📱 Android APK Ready for Direct Phone Download" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The APK has been packaged and published directly to **GitHub Releases** so you can download it from the GitHub Phone App or mobile browser without unzipping artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "The APK has been packaged and published directly to **GitHub Releases**:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Specific File Name**: \`YouTubePure-v1.0.0.apk\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Direct Release Page**: [View Release & Download APK](https://github.com/${{ github.repository }}/releases/tag/v1.0.0)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Direct APK Download URL**: \`https://github.com/${{ github.repository }}/releases/download/v1.0.0/YouTubePure-v1.0.0.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Specific File Name**: \`YouTubePure-v1.1.0.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct Release Page**: [View Release & Download APK](https://github.com/${{ github.repository }}/releases/tag/v1.1.0)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct APK Download URL**: \`https://github.com/${{ github.repository }}/releases/download/v1.1.0/YouTubePure-v1.1.0.apk\`" >> $GITHUB_STEP_SUMMARY

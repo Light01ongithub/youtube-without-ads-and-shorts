@@ -1,5 +1,5 @@
 /**
- * YouTube Pure: Shorts Eradication & Ad-Skipping Engine
+ * YouTube Pure: Shorts Eradication, Ad Skipping, Gesture Controls & Liquid Glass UI
  */
 (function () {
     'use strict';
@@ -12,11 +12,22 @@
 
         document.addEventListener('visibilitychange', (e) => e.stopImmediatePropagation(), true);
         window.addEventListener('blur', (e) => e.stopImmediatePropagation(), true);
-    } catch (e) {
-        console.warn('YouTubePure: Failed to patch visibilityState', e);
-    }
+    } catch (e) {}
 
-    // 2. URL Interceptor: Redirect any /shorts/ID immediately to standard /watch?v=ID
+    // 2. Block External "Open In App" / Play Store Redirects in JavaScript
+    const origOpen = window.open;
+    window.open = function (url) {
+        if (typeof url === 'string') {
+            const lower = url.toLowerCase();
+            if (lower.includes('market://') || lower.includes('com.google.android.youtube') || lower.includes('open_app')) {
+                console.log('YouTubePure: Blocked open-in-app redirect:', url);
+                return null;
+            }
+        }
+        return origOpen.apply(this, arguments);
+    };
+
+    // 3. URL Interceptor: Redirect any /shorts/ID immediately to standard /watch?v=ID
     function redirectShortsUrl(url) {
         try {
             const parsed = new URL(url || window.location.href);
@@ -50,8 +61,25 @@
     };
     window.addEventListener('popstate', () => redirectShortsUrl());
 
-    // 3. Selectors to purge from DOM
-    const SHORTS_SELECTORS = [
+    // 4. Selectors to purge from DOM (Shorts, Open in App, Ads)
+    const PURGE_SELECTORS = [
+        // "Open in app" & Upsell banners
+        'ytm-app-banner',
+        '.mobile-topbar-header .open-in-app',
+        '.topbar-action-button:has(a[href*="app"])',
+        'ytm-header-bar .open-in-app',
+        '.ytm-open-app-banner',
+        '.app-promo-banner',
+        'ytm-upsell-dialog-renderer',
+        '.upsell-dialog',
+        '.promo-interstitial',
+        '.mealbar-promo-renderer',
+        'ytm-mealbar-promo-renderer',
+        '[aria-label*="Open app" i]',
+        '[aria-label*="Get app" i]',
+        '[aria-label*="Get YouTube" i]',
+        '[aria-label*="Open in app" i]',
+        // Shorts
         'ytm-reel-shelf-renderer',
         'ytm-shorts-lockup-view-model-v2',
         'ytm-shorts-lockup-view-model',
@@ -62,31 +90,35 @@
         'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
         'ytm-pivot-bar-item-renderer[aria-label*="Shorts" i]',
         'a[href^="/shorts"]',
+        // Ads & Sponsored
         'ytm-promoted-sparkles-web-renderer',
-        'ytm-promoted-video-renderer'
+        'ytm-promoted-video-renderer',
+        'ytm-companion-ad-renderer',
+        'ytm-ad-slot-renderer',
+        '#player-ads'
     ];
 
-    function purgeShortsAndAds(root = document) {
-        // Fast-path: query and remove
-        for (let i = 0; i < SHORTS_SELECTORS.length; i++) {
-            const elements = root.querySelectorAll(SHORTS_SELECTORS[i]);
+    function purgeElements(root = document) {
+        for (let i = 0; i < PURGE_SELECTORS.length; i++) {
+            const elements = root.querySelectorAll(PURGE_SELECTORS[i]);
             for (let j = 0; j < elements.length; j++) {
                 elements[j].remove();
             }
         }
 
-        // Check pivot bar directly
+        // Pivot bar check
         const pivotItems = document.querySelectorAll('ytm-pivot-bar-item-renderer');
         pivotItems.forEach((item) => {
             const text = (item.innerText || item.getAttribute('aria-label') || '').toLowerCase();
             const link = item.querySelector('a');
-            if (text.includes('shorts') || (link && link.getAttribute('href') && link.getAttribute('href').includes('/shorts'))) {
+            const href = (link?.getAttribute('href') || '').toLowerCase();
+            if (text.includes('shorts') || href.includes('/shorts') || text.includes('open') || href.includes('app')) {
                 item.remove();
             }
         });
     }
 
-    // 4. Video Ad Fast-Forward & Auto-Skip
+    // 5. Video Ad Fast-Forward & Auto-Skip
     function handleVideoAds() {
         const adShowing = document.querySelector('.ad-showing, .ad-interrupting');
         const video = document.querySelector('video');
@@ -104,37 +136,111 @@
         skipButtons.forEach((btn) => btn.click());
     }
 
-    // 5. High-Performance MutationObserver
+    // 6. Double-Tap to Seek (10s Forward / Backward) with Liquid Glass Indicator
+    let lastTapTime = 0;
+    let lastTapSide = null;
+    let seekIndicator = null;
+    let hideSeekTimeout = null;
+
+    function getOrCreateSeekIndicator() {
+        if (!seekIndicator || !document.body.contains(seekIndicator)) {
+            seekIndicator = document.createElement('div');
+            seekIndicator.className = 'yt-pure-seek-indicator';
+            document.body.appendChild(seekIndicator);
+        }
+        return seekIndicator;
+    }
+
+    function showSeekFeedback(text, isRightSide) {
+        const indicator = getOrCreateSeekIndicator();
+        indicator.innerText = text;
+        indicator.style.left = isRightSide ? 'auto' : '15%';
+        indicator.style.right = isRightSide ? '15%' : 'auto';
+        indicator.classList.add('visible');
+
+        clearTimeout(hideSeekTimeout);
+        hideSeekTimeout = setTimeout(() => {
+            indicator.classList.remove('visible');
+        }, 650);
+    }
+
+    function setupDoubleTapSeek() {
+        const player = document.querySelector('.video-player-container, #player, .player-container, video');
+        if (!player || player.dataset.ytPureSeekAttached) return;
+        player.dataset.ytPureSeekAttached = 'true';
+
+        player.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            const touch = e.touches[0];
+            const rect = player.getBoundingClientRect();
+            const relativeX = touch.clientX - rect.left;
+            const width = rect.width;
+            const now = Date.now();
+
+            const isLeft = relativeX < width * 0.4;
+            const isRight = relativeX > width * 0.6;
+
+            if (isLeft || isRight) {
+                const side = isLeft ? 'left' : 'right';
+                if (now - lastTapTime < 320 && lastTapSide === side) {
+                    const video = document.querySelector('video');
+                    if (video) {
+                        e.preventDefault();
+                        if (side === 'left') {
+                            video.currentTime = Math.max(0, video.currentTime - 10);
+                            showSeekFeedback('◀◀ 10 sec', false);
+                        } else {
+                            video.currentTime = Math.min(video.duration || 99999, video.currentTime + 10);
+                            showSeekFeedback('10 sec ▶▶', true);
+                        }
+                    }
+                    lastTapTime = 0;
+                    lastTapSide = null;
+                    return;
+                }
+                lastTapTime = now;
+                lastTapSide = side;
+            } else {
+                lastTapTime = 0;
+                lastTapSide = null;
+            }
+        }, { passive: false });
+    }
+
+    // 7. High-Performance MutationObserver
     let scheduled = false;
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(() => {
         if (!scheduled) {
             scheduled = true;
             requestAnimationFrame(() => {
-                purgeShortsAndAds();
+                purgeElements();
                 handleVideoAds();
+                setupDoubleTapSeek();
                 scheduled = false;
             });
         }
     });
 
-    // Start observing as early as possible
     observer.observe(document.documentElement || document.body, {
         childList: true,
         subtree: true
     });
 
-    // Fallback periodic check for dynamic feed scrolling
     setInterval(() => {
-        purgeShortsAndAds();
+        purgeElements();
         handleVideoAds();
+        setupDoubleTapSeek();
     }, 1000);
 
-    // Initial pass
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => purgeShortsAndAds());
+        document.addEventListener('DOMContentLoaded', () => {
+            purgeElements();
+            setupDoubleTapSeek();
+        });
     } else {
-        purgeShortsAndAds();
+        purgeElements();
+        setupDoubleTapSeek();
     }
 
-    console.log('YouTubePure: Shorts and Ad blocker initialized successfully.');
+    console.log('YouTubePure: Liquid Glass & Extended App Features loaded.');
 })();

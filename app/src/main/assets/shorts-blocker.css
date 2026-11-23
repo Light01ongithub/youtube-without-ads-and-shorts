@@ -1,23 +1,51 @@
 /* ==========================================================================
-   YouTube Pure: Shorts & Ad Eradication Stylesheet
+   YouTube Pure: Liquid Glass UI & Complete Distraction Eradication
    ========================================================================== */
 
-/* 1. Eliminate Shorts from the Bottom Navigation Bar (Pivot Bar) */
+/* --------------------------------------------------------------------------
+   1. TOTAL ERADICATION: "Open in App", App Banners & Upsells
+   -------------------------------------------------------------------------- */
+ytm-app-banner,
+.mobile-topbar-header .open-in-app,
+.topbar-action-button:has(a[href*="app"]),
+ytm-header-bar .open-in-app,
+.ytm-open-app-banner,
+.app-promo-banner,
+ytm-upsell-dialog-renderer,
+.upsell-dialog,
+.promo-interstitial,
+.mealbar-promo-renderer,
+ytm-mealbar-promo-renderer,
+[aria-label*="Open app" i],
+[aria-label*="Get app" i],
+[aria-label*="Get YouTube" i],
+[aria-label*="Open in app" i],
+a[href*="market://"],
+a[href*="play.google.com/store/apps/details?id=com.google.android.youtube"],
+.ytm-pivot-bar-item-renderer:has([aria-label*="Open" i]),
+ytm-pivot-bar-item-renderer:has(a[href*="app"]),
+div[class*="upsell"],
+div[class*="open-in-app"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. TOTAL ERADICATION: Shorts (Bottom Bar, Feed Shelves, Carousels)
+   -------------------------------------------------------------------------- */
 ytm-pivot-bar-item-renderer:has([aria-label*="Shorts" i]),
 ytm-pivot-bar-item-renderer:has(.pivot-shorts),
 ytm-pivot-bar-item-renderer[aria-label*="Shorts" i],
 .pivot-bar-item-tab[aria-label*="Shorts" i],
 [aria-label="Shorts" i],
 a[href^="/shorts"],
-ytm-pivot-bar-renderer > ytm-pivot-bar-item-renderer:nth-child(2):has(a[href*="shorts"]) {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    width: 0 !important;
-    pointer-events: none !important;
-}
-
-/* 2. Eliminate Shorts Shelves, Reels, & Carousels in Home and Search Feeds */
+ytm-pivot-bar-renderer > ytm-pivot-bar-item-renderer:nth-child(2):has(a[href*="shorts"]),
 ytm-reel-shelf-renderer,
 ytm-shorts-lockup-view-model-v2,
 ytm-shorts-lockup-view-model,
@@ -36,13 +64,14 @@ div[is-shorts],
     visibility: hidden !important;
     height: 0 !important;
     max-height: 0 !important;
-    overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
-    border: none !important;
+    pointer-events: none !important;
 }
 
-/* 3. Eliminate Banner & Video Overlay Ads */
+/* --------------------------------------------------------------------------
+   3. TOTAL ERADICATION: Banner Ads, Sponsored Sparkles, Video Overlays
+   -------------------------------------------------------------------------- */
 ytm-promoted-sparkles-web-renderer,
 ytm-promoted-video-renderer,
 ytm-companion-ad-renderer,
@@ -58,4 +87,128 @@ ytm-ad-slot-renderer,
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. NEXT-LEVEL UI: "Liquid Glass" (Glassmorphism & Frosted Acrylic)
+   -------------------------------------------------------------------------- */
+
+/* Deep AMOLED Night Background */
+html, body, #app, ytm-app {
+    background-color: #070709 !important;
+    color: #f1f1f1 !important;
+}
+
+/* Liquid Glass Top Header */
+ytm-header-bar,
+.mobile-topbar-header,
+header.masthead {
+    background: rgba(12, 12, 16, 0.72) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45) !important;
+    transition: background 0.3s ease !important;
+}
+
+/* Liquid Glass Bottom Navigation (Pivot Bar) */
+ytm-pivot-bar-renderer {
+    background: rgba(12, 12, 16, 0.75) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 20px 20px 0 0 !important;
+}
+
+/* Active Navigation Tab Glow */
+.pivot-bar-item-tab[aria-selected="true"],
+ytm-pivot-bar-item-renderer.selected {
+    color: #ff334b !important;
+    transform: scale(1.05);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+/* Liquid Glass Category Chips (Filter Pills) */
+ytm-chip-cloud-chip-renderer {
+    background: rgba(255, 255, 255, 0.07) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 24px !important;
+    color: #e5e5e5 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+ytm-chip-cloud-chip-renderer[aria-selected="true"],
+ytm-chip-cloud-chip-renderer.selected {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.12)) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Glassmorphic Search Input Bar */
+.search-input-container,
+.searchbox {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 28px !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Rounded Video Cards with Liquid Glass Micro-elevation */
+ytm-media-item,
+ytm-video-with-context-renderer,
+ytm-compact-video-renderer {
+    background: transparent !important;
+    margin-bottom: 14px !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+}
+
+.media-item-thumbnail-container,
+.video-thumbnail-container-compact {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Video Player Floating Glass Corners */
+.video-player-container,
+#player-container-id {
+    border-radius: 0 0 18px 18px !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Double-Tap Seek Glass Ripple Indicator */
+.yt-pure-seek-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(15, 15, 20, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    padding: 12px 22px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.yt-pure-seek-indicator.visible {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.08);
 }

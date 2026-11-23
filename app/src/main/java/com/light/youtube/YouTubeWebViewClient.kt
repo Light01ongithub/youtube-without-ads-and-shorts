@@ -11,7 +11,10 @@ import android.webkit.WebViewClient
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
-class YouTubeWebViewClient(private val context: Context) : WebViewClient() {
+class YouTubeWebViewClient(
+    private val context: Context,
+    private val onPageFinishedCallback: (() -> Unit)? = null
+) : WebViewClient() {
 
     private val cachedCss: String by lazy {
         try {
@@ -35,9 +38,19 @@ class YouTubeWebViewClient(private val context: Context) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val uri = request?.url ?: return false
+        val uriString = uri.toString().lowercase()
         val path = uri.path ?: ""
 
-        // Intercept any Shorts link and rewrite to standard watch URL
+        // 1. Block "Open in App" and Play Store market redirects
+        if (uriString.startsWith("market://") ||
+            uriString.contains("play.google.com/store/apps/details?id=com.google.android.youtube") ||
+            uriString.startsWith("vnd.youtube:")
+        ) {
+            // Drop it - stay inside our Pure app!
+            return true
+        }
+
+        // 2. Intercept any Shorts link and rewrite to standard watch URL
         if (path.startsWith("/shorts/")) {
             val parts = path.split("/")
             val videoId = parts.getOrNull(2) ?: parts.getOrNull(1)
@@ -76,18 +89,20 @@ class YouTubeWebViewClient(private val context: Context) : WebViewClient() {
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
         injectCleaners(view)
+        onPageFinishedCallback?.invoke()
     }
 
     private fun injectCleaners(view: WebView?) {
         if (view == null) return
 
-        // 1. Inject CSS Rules
+        // 1. Inject Liquid Glass & Purge Stylesheet
         if (cachedCss.isNotEmpty()) {
             val encodedCss = Base64.encodeToString(cachedCss.toByteArray(), Base64.NO_WRAP)
             val cssInjection = """
                 (function() {
                     var styleId = 'yt-pure-style';
-                    if (!document.getElementById(styleId)) {
+                    var existing = document.getElementById(styleId);
+                    if (!existing) {
                         var style = document.createElement('style');
                         style.id = styleId;
                         style.type = 'text/css';
@@ -99,7 +114,7 @@ class YouTubeWebViewClient(private val context: Context) : WebViewClient() {
             view.evaluateJavascript(cssInjection, null)
         }
 
-        // 2. Inject JS Engine (MutationObserver, SPA router, ad-skipper)
+        // 2. Inject JS Engine (MutationObserver, SPA router, ad-skipper, double-tap seek)
         if (cachedJs.isNotEmpty()) {
             view.evaluateJavascript(cachedJs, null)
         }
