@@ -1,0 +1,61 @@
+/* ==========================================================================
+   YouTube Pure: Shorts & Ad Eradication Stylesheet
+   ========================================================================== */
+
+/* 1. Eliminate Shorts from the Bottom Navigation Bar (Pivot Bar) */
+ytm-pivot-bar-item-renderer:has([aria-label*="Shorts" i]),
+ytm-pivot-bar-item-renderer:has(.pivot-shorts),
+ytm-pivot-bar-item-renderer[aria-label*="Shorts" i],
+.pivot-bar-item-tab[aria-label*="Shorts" i],
+[aria-label="Shorts" i],
+a[href^="/shorts"],
+ytm-pivot-bar-renderer > ytm-pivot-bar-item-renderer:nth-child(2):has(a[href*="shorts"]) {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 2. Eliminate Shorts Shelves, Reels, & Carousels in Home and Search Feeds */
+ytm-reel-shelf-renderer,
+ytm-shorts-lockup-view-model-v2,
+ytm-shorts-lockup-view-model,
+ytd-reel-shelf-renderer,
+ytd-rich-shelf-renderer[is-shorts],
+ytm-rich-shelf-renderer:has(ytm-shorts-lockup-view-model-v2),
+ytm-reel-item-renderer,
+grid-shelf-view-model:has(ytm-shorts-lockup-view-model-v2),
+ytm-item-section-renderer:has(ytm-reel-shelf-renderer),
+ytm-item-section-renderer:has(ytm-shorts-lockup-view-model-v2),
+ytm-item-section-renderer:has(ytm-shorts-lockup-view-model),
+div[is-shorts],
+[tab-identifier="FEshorts"],
+[data-endpoint*="shorts"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* 3. Eliminate Banner & Video Overlay Ads */
+ytm-promoted-sparkles-web-renderer,
+ytm-promoted-video-renderer,
+ytm-companion-ad-renderer,
+.ad-container,
+.ad-interrupting,
+.ytp-ad-module,
+.ytp-ad-overlay-container,
+.ytp-ad-player-overlay,
+.ytp-ad-text,
+.video-ads,
+ytm-ad-slot-renderer,
+#player-ads {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+}
