@@ -3,15 +3,7 @@ name: Build YouTube Pure APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
-    inputs:
-      create_release:
-        description: 'Publish as a GitHub Release?'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -19,7 +11,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Android APK
+    name: Build & Publish Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -40,26 +32,46 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: bash ./gradlew assembleDebug --stacktrace
 
+      - name: Prepare Named APK
+        run: |
+          mkdir -p release-apk
+          cp app/build/outputs/apk/debug/*.apk release-apk/YouTubePure-v1.0.0.apk
+          ls -la release-apk/
+
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
           name: YouTubePure-v1.0.0-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: release-apk/YouTubePure-v1.0.0.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Create GitHub Release (if requested)
-        if: ${{ github.event.inputs.create_release == 'true' || startsWith(github.ref, 'refs/tags/') }}
+      - name: Publish Direct APK to GitHub Releases (Phone Accessible)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-${{ github.run_number }}
-          name: YouTube Pure v1.0.0 (Build ${{ github.run_number }})
+          tag_name: v1.0.0
+          name: "YouTube Pure v1.0.0 (Direct Phone Download)"
           body: |
-            ### YouTube Pure v1.0.0
-            - Completely removed Shorts from bottom navigation bar.
-            - Purged Shorts reels and carousels while scrolling home and search feeds.
-            - Automated video ad-skipping and domain-level ad blocking.
-            - Background video playback and fullscreen landscape support.
-          files: app/build/outputs/apk/debug/*.apk
+            ### 📱 Download for Android Phone
+            Tap **`YouTubePure-v1.0.0.apk`** below to download and install directly on your device.
+
+            #### Features in this build:
+            - 🚫 **No Shorts**: Bottom navigation tab removed & scrolling feed shelves completely blocked.
+            - 🚫 **No Video Ads**: Fast network-level ad blocking + auto-skipping.
+            - 🎧 **Background Play**: Audio playback continues with screen off or app minimized.
+            - 📺 **Fullscreen**: Automatic landscape rotation on video expansion.
+            - ⚡ **Lightweight**: Pure native WebView shell (~4.6 MB).
+          files: release-apk/YouTubePure-v1.0.0.apk
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Action Summary
+        run: |
+          echo "## 📱 Android APK Ready for Direct Phone Download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The APK has been packaged and published directly to **GitHub Releases** so you can download it from the GitHub Phone App or mobile browser without unzipping artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Specific File Name**: \`YouTubePure-v1.0.0.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct Release Page**: [View Release & Download APK](https://github.com/${{ github.repository }}/releases/tag/v1.0.0)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct APK Download URL**: \`https://github.com/${{ github.repository }}/releases/download/v1.0.0/YouTubePure-v1.0.0.apk\`" >> $GITHUB_STEP_SUMMARY
