@@ -2,8 +2,10 @@ package com.light.youtube
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.widget.FrameLayout
 
@@ -68,5 +70,18 @@ class YouTubeWebChromeClient(
 
         activity.window.decorView.systemUiVisibility = originalSystemUiVisibility
         activity.requestedOrientation = originalOrientation
+    }
+
+    override fun onPermissionRequest(request: PermissionRequest?) {
+        // Automatically grant audio recording for YouTube Voice Search
+        request?.let {
+            activity.runOnUiThread {
+                it.grant(it.resources)
+            }
+        }
+    }
+
+    override fun getDefaultVideoPoster(): Bitmap? {
+        return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     }
 }

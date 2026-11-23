@@ -1,5 +1,5 @@
 /**
- * YouTube Pure: Shorts Eradication, Ad Skipping, Gesture Controls & Liquid Glass UI
+ * YouTube Pure: Extended YouTube Feature Engine & Liquid Glass Controls
  */
 (function () {
     'use strict';
@@ -14,7 +14,7 @@
         window.addEventListener('blur', (e) => e.stopImmediatePropagation(), true);
     } catch (e) {}
 
-    // 2. Block External "Open In App" / Play Store Redirects in JavaScript
+    // 2. Block External "Open In App" / Play Store Redirects
     const origOpen = window.open;
     window.open = function (url) {
         if (typeof url === 'string') {
@@ -53,17 +53,21 @@
     history.pushState = function () {
         originalPushState.apply(this, arguments);
         redirectShortsUrl(arguments[2]);
+        handleVideoChange();
     };
     const originalReplaceState = history.replaceState;
     history.replaceState = function () {
         originalReplaceState.apply(this, arguments);
         redirectShortsUrl(arguments[2]);
+        handleVideoChange();
     };
-    window.addEventListener('popstate', () => redirectShortsUrl());
+    window.addEventListener('popstate', () => {
+        redirectShortsUrl();
+        handleVideoChange();
+    });
 
     // 4. Selectors to purge from DOM (Shorts, Open in App, Ads)
     const PURGE_SELECTORS = [
-        // "Open in app" & Upsell banners
         'ytm-app-banner',
         '.mobile-topbar-header .open-in-app',
         '.topbar-action-button:has(a[href*="app"])',
@@ -79,7 +83,6 @@
         '[aria-label*="Get app" i]',
         '[aria-label*="Get YouTube" i]',
         '[aria-label*="Open in app" i]',
-        // Shorts
         'ytm-reel-shelf-renderer',
         'ytm-shorts-lockup-view-model-v2',
         'ytm-shorts-lockup-view-model',
@@ -90,7 +93,6 @@
         'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
         'ytm-pivot-bar-item-renderer[aria-label*="Shorts" i]',
         'a[href^="/shorts"]',
-        // Ads & Sponsored
         'ytm-promoted-sparkles-web-renderer',
         'ytm-promoted-video-renderer',
         'ytm-companion-ad-renderer',
@@ -106,7 +108,6 @@
             }
         }
 
-        // Pivot bar check
         const pivotItems = document.querySelectorAll('ytm-pivot-bar-item-renderer');
         pivotItems.forEach((item) => {
             const text = (item.innerText || item.getAttribute('aria-label') || '').toLowerCase();
@@ -131,46 +132,64 @@
             } catch (e) {}
         }
 
-        // Click any skip button instantly
         const skipButtons = document.querySelectorAll('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .videoAdUiSkipButton, .ytp-ad-skip-button-slot');
         skipButtons.forEach((btn) => btn.click());
     }
 
-    // 6. Double-Tap to Seek (10s Forward / Backward) with Liquid Glass Indicator
-    let lastTapTime = 0;
-    let lastTapSide = null;
-    let seekIndicator = null;
+    // 6. Floating Indicators (Seek & 2x Speed)
+    let floatingPill = null;
+    let speedPill = null;
     let hideSeekTimeout = null;
 
-    function getOrCreateSeekIndicator() {
-        if (!seekIndicator || !document.body.contains(seekIndicator)) {
-            seekIndicator = document.createElement('div');
-            seekIndicator.className = 'yt-pure-seek-indicator';
-            document.body.appendChild(seekIndicator);
+    function getOrCreatePill() {
+        if (!floatingPill || !document.body.contains(floatingPill)) {
+            floatingPill = document.createElement('div');
+            floatingPill.className = 'yt-pure-floating-pill';
+            document.body.appendChild(floatingPill);
         }
-        return seekIndicator;
+        return floatingPill;
+    }
+
+    function getOrCreateSpeedPill() {
+        if (!speedPill || !document.body.contains(speedPill)) {
+            speedPill = document.createElement('div');
+            speedPill.className = 'yt-pure-speed-pill';
+            speedPill.innerText = '⚡ 2× Speed';
+            document.body.appendChild(speedPill);
+        }
+        return speedPill;
     }
 
     function showSeekFeedback(text, isRightSide) {
-        const indicator = getOrCreateSeekIndicator();
-        indicator.innerText = text;
-        indicator.style.left = isRightSide ? 'auto' : '15%';
-        indicator.style.right = isRightSide ? '15%' : 'auto';
-        indicator.classList.add('visible');
+        const pill = getOrCreatePill();
+        pill.innerText = text;
+        pill.style.left = isRightSide ? 'auto' : '15%';
+        pill.style.right = isRightSide ? '15%' : 'auto';
+        pill.classList.add('visible');
 
         clearTimeout(hideSeekTimeout);
         hideSeekTimeout = setTimeout(() => {
-            indicator.classList.remove('visible');
+            pill.classList.remove('visible');
         }, 650);
     }
 
-    function setupDoubleTapSeek() {
+    // 7. Video Gestures: Double-Tap Seek & Hold for 2× Speed
+    let lastTapTime = 0;
+    let lastTapSide = null;
+    let holdTimer = null;
+    let isHoldingSpeed = false;
+    let previousRate = 1.0;
+    let isScreenLocked = false;
+
+    function setupPlayerGestures() {
         const player = document.querySelector('.video-player-container, #player, .player-container, video');
-        if (!player || player.dataset.ytPureSeekAttached) return;
-        player.dataset.ytPureSeekAttached = 'true';
+        if (!player || player.dataset.ytPureGesturesAttached) return;
+        player.dataset.ytPureGesturesAttached = 'true';
 
         player.addEventListener('touchstart', (e) => {
+            if (isScreenLocked) return;
             if (e.touches.length !== 1) return;
+
             const touch = e.touches[0];
             const rect = player.getBoundingClientRect();
             const relativeX = touch.clientX - rect.left;
@@ -179,11 +198,24 @@
 
             const isLeft = relativeX < width * 0.4;
             const isRight = relativeX > width * 0.6;
+            const side = isLeft ? 'left' : (isRight ? 'right' : 'center');
 
+            // Setup Hold for 2x Speed
+            const video = document.querySelector('video');
+            clearTimeout(holdTimer);
+            holdTimer = setTimeout(() => {
+                if (video && !video.paused) {
+                    isHoldingSpeed = true;
+                    previousRate = video.playbackRate || 1.0;
+                    video.playbackRate = 2.0;
+                    getOrCreateSpeedPill().classList.add('visible');
+                }
+            }, 450);
+
+            // Double tap to seek
             if (isLeft || isRight) {
-                const side = isLeft ? 'left' : 'right';
                 if (now - lastTapTime < 320 && lastTapSide === side) {
-                    const video = document.querySelector('video');
+                    clearTimeout(holdTimer); // Cancel hold 2x if double tapping
                     if (video) {
                         e.preventDefault();
                         if (side === 'left') {
@@ -205,9 +237,152 @@
                 lastTapSide = null;
             }
         }, { passive: false });
+
+        function cancelHoldSpeed() {
+            clearTimeout(holdTimer);
+            if (isHoldingSpeed) {
+                isHoldingSpeed = false;
+                const video = document.querySelector('video');
+                if (video) {
+                    video.playbackRate = previousRate;
+                }
+                getOrCreateSpeedPill().classList.remove('visible');
+            }
+        }
+
+        player.addEventListener('touchend', cancelHoldSpeed);
+        player.addEventListener('touchcancel', cancelHoldSpeed);
     }
 
-    // 7. High-Performance MutationObserver
+    // 8. Custom Liquid Glass Control Bar (Lock, Loop, Sleep Timer, Native Share)
+    function injectFeatureControlBar() {
+        const metadataContainer = document.querySelector('ytm-item-section-renderer, .slim-video-metadata-header, #app');
+        if (!metadataContainer || document.getElementById('yt-pure-control-bar')) return;
+
+        const bar = document.createElement('div');
+        bar.id = 'yt-pure-control-bar';
+        bar.className = 'yt-pure-control-bar';
+
+        // 1. Screen Lock Button
+        const lockBtn = document.createElement('button');
+        lockBtn.className = 'yt-pure-btn';
+        lockBtn.innerText = '🔒 Lock Screen';
+        lockBtn.onclick = () => {
+            isScreenLocked = !isScreenLocked;
+            lockBtn.innerText = isScreenLocked ? '🔓 Screen Locked' : '🔒 Lock Screen';
+            lockBtn.classList.toggle('active', isScreenLocked);
+
+            let shield = document.getElementById('yt-pure-lock-shield');
+            if (!shield) {
+                shield = document.createElement('div');
+                shield.id = 'yt-pure-lock-shield';
+                shield.className = 'yt-pure-lock-shield';
+                document.body.appendChild(shield);
+            }
+            shield.classList.toggle('active', isScreenLocked);
+
+            if (window.AndroidBridge) {
+                window.AndroidBridge.showToast(isScreenLocked ? 'Player locked: touches disabled' : 'Player unlocked');
+            }
+        };
+        bar.appendChild(lockBtn);
+
+        // 2. Loop Video Button
+        const loopBtn = document.createElement('button');
+        loopBtn.className = 'yt-pure-btn';
+        loopBtn.innerText = '🔁 Loop';
+        loopBtn.onclick = () => {
+            const video = document.querySelector('video');
+            if (video) {
+                video.loop = !video.loop;
+                loopBtn.classList.toggle('active', video.loop);
+                if (window.AndroidBridge) {
+                    window.AndroidBridge.showToast(video.loop ? 'Video looping enabled' : 'Video looping disabled');
+                }
+            }
+        };
+        bar.appendChild(loopBtn);
+
+        // 3. Sleep Timer Button
+        const sleepBtn = document.createElement('button');
+        sleepBtn.className = 'yt-pure-btn';
+        sleepBtn.innerText = '⏱️ Sleep Timer';
+        sleepBtn.onclick = () => {
+            const minutes = prompt('Set Sleep Timer (minutes to auto-pause):', '30');
+            if (minutes !== null) {
+                const parsed = parseInt(minutes, 10);
+                if (!isNaN(parsed) && window.AndroidBridge) {
+                    window.AndroidBridge.setSleepTimer(parsed);
+                    sleepBtn.classList.toggle('active', parsed > 0);
+                }
+            }
+        };
+        bar.appendChild(sleepBtn);
+
+        // 4. Native Share Button
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'yt-pure-btn';
+        shareBtn.innerText = '↗️ Share';
+        shareBtn.onclick = () => {
+            const title = document.title || 'YouTube Video';
+            const url = window.location.href;
+            if (window.AndroidBridge) {
+                window.AndroidBridge.share(title, url);
+            } else if (navigator.share) {
+                navigator.share({ title, url });
+            }
+        };
+        bar.appendChild(shareBtn);
+
+        // Insert after video player container
+        const playerContainer = document.querySelector('.video-player-container, #player-container-id, ytm-player');
+        if (playerContainer && playerContainer.parentNode) {
+            playerContainer.parentNode.insertBefore(bar, playerContainer.nextSibling);
+        } else {
+            metadataContainer.prepend(bar);
+        }
+    }
+
+    // 9. Return YouTube Dislike Integration
+    let currentVideoId = null;
+    function fetchAndShowDislikes() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('v');
+        if (!videoId || videoId === currentVideoId) return;
+        currentVideoId = videoId;
+
+        fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${videoId}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && typeof data.dislikes === 'number') {
+                    const formatted = formatNumber(data.dislikes);
+                    const dislikeBtn = document.querySelector('[aria-label*="Dislike" i], .slim-video-action-bar-actions button:nth-child(2)');
+                    if (dislikeBtn && !dislikeBtn.querySelector('.yt-pure-dislike-count')) {
+                        const countSpan = document.createElement('span');
+                        countSpan.className = 'yt-pure-dislike-count';
+                        countSpan.innerText = ` ${formatted}`;
+                        dislikeBtn.appendChild(countSpan);
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+
+    function formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    }
+
+    function handleVideoChange() {
+        setTimeout(() => {
+            fetchAndShowDislikes();
+            injectFeatureControlBar();
+            setupPlayerGestures();
+        }, 800);
+    }
+
+    // 10. MutationObserver Engine
     let scheduled = false;
     const observer = new MutationObserver(() => {
         if (!scheduled) {
@@ -215,7 +390,9 @@
             requestAnimationFrame(() => {
                 purgeElements();
                 handleVideoAds();
-                setupDoubleTapSeek();
+                setupPlayerGestures();
+                injectFeatureControlBar();
+                fetchAndShowDislikes();
                 scheduled = false;
             });
         }
@@ -229,17 +406,20 @@
     setInterval(() => {
         purgeElements();
         handleVideoAds();
-        setupDoubleTapSeek();
-    }, 1000);
+        setupPlayerGestures();
+        injectFeatureControlBar();
+    }, 1500);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             purgeElements();
-            setupDoubleTapSeek();
+            setupPlayerGestures();
+            injectFeatureControlBar();
         });
     } else {
         purgeElements();
-        setupDoubleTapSeek();
+        setupPlayerGestures();
+        injectFeatureControlBar();
     }
 
     console.log('YouTubePure: Liquid Glass & Extended App Features loaded.');

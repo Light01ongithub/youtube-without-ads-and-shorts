@@ -1,12 +1,13 @@
 package com.light.youtube
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.PictureInPictureParams
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebSettings
@@ -14,6 +15,8 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
@@ -23,6 +26,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var customViewContainer: FrameLayout
     private lateinit var chromeClient: YouTubeWebChromeClient
     private lateinit var webViewClient: YouTubeWebViewClient
+
+    companion object {
+        private const val PERMISSION_REQUEST_AUDIO = 101
+        // Clean Chrome Mobile UA that bypasses Google OAuth "disallowed_useragent" restriction
+        private const val CHROME_MOBILE_UA =
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.179 Mobile Safari/537.36"
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,16 +70,22 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = chromeClient
         webView.webViewClient = webViewClient
 
-        // 4. Configure WebView Settings
+        // 4. Configure WebView Settings & Google Login UA
         configureWebViewSettings(webView.settings)
 
-        // 5. Cookies & Local Storage
+        // 5. Register Native Android JavaScript Bridge
+        webView.addJavascriptInterface(WebAppInterface(this, webView), "AndroidBridge")
+
+        // 6. Cookies & Local Storage
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)
         }
 
-        // 6. Back Navigation Handling
+        // 7. Request Mic Permission for Voice Search if needed
+        checkVoiceSearchPermission()
+
+        // 8. Back Navigation Handling
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (chromeClient.isCustomViewShowing) {
@@ -83,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 7. Restore state or load YouTube Mobile Home
+        // 9. Restore state or load YouTube Mobile Home
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
@@ -102,13 +118,26 @@ class MainActivity : AppCompatActivity() {
             loadsImagesAutomatically = true
             useWideViewPort = true
             loadWithOverviewMode = true
-            setSupportZoom(false)
-            builtInZoomControls = false
+            setSupportZoom(true)
+            builtInZoomControls = true
             displayZoomControls = false
             cacheMode = WebSettings.LOAD_DEFAULT
 
-            // Smooth hardware accelerated rendering
+            // Clean User Agent ensures Google Sign-in works smoothly
+            userAgentString = CHROME_MOBILE_UA
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        }
+    }
+
+    private fun checkVoiceSearchPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                PERMISSION_REQUEST_AUDIO
+            )
         }
     }
 
@@ -119,7 +148,6 @@ class MainActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Check if playing or in custom fullscreen view
             try {
                 val aspectRatio = Rational(16, 9)
                 val pipBuilder = PictureInPictureParams.Builder()
