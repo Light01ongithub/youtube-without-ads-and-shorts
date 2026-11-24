@@ -4,6 +4,10 @@
 (function () {
     'use strict';
 
+    if (!document.documentElement || !['m.youtube.com', 'www.youtube.com', 'youtube.com'].includes(location.hostname)) return;
+    if (window.ytPureInitialized) return;
+    window.ytPureInitialized = true;
+
     // 1. Force Background Playback: Prevent YouTube from pausing when tab/screen is unfocused
     try {
         Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
@@ -27,97 +31,29 @@
         return origOpen.apply(this, arguments);
     };
 
-    // 3. URL Interceptor: Redirect any /shorts/ID immediately to standard /watch?v=ID
-    function redirectShortsUrl(url) {
-        try {
-            const parsed = new URL(url || window.location.href);
-            if (parsed.pathname.startsWith('/shorts/')) {
-                const parts = parsed.pathname.split('/');
-                const id = parts[2] || parts[1];
-                if (id) {
-                    const cleanId = id.split('?')[0].split('&')[0];
-                    const target = '/watch?v=' + cleanId;
-                    console.log('YouTubePure: Redirecting Short -> Normal Watch:', target);
-                    window.location.replace(target);
-                    return true;
-                }
-            }
-        } catch (e) {}
+    function leaveShorts() {
+        if (/^\/shorts(?:\/|$)/.test(location.pathname)) {
+            location.replace('/');
+            return true;
+        }
         return false;
     }
 
-    redirectShortsUrl();
+    if (leaveShorts()) return;
 
-    // Hook SPA History pushState/replaceState
-    const originalPushState = history.pushState;
-    history.pushState = function () {
-        originalPushState.apply(this, arguments);
-        redirectShortsUrl(arguments[2]);
-        handleVideoChange();
-    };
-    const originalReplaceState = history.replaceState;
-    history.replaceState = function () {
-        originalReplaceState.apply(this, arguments);
-        redirectShortsUrl(arguments[2]);
-        handleVideoChange();
-    };
-    window.addEventListener('popstate', () => {
-        redirectShortsUrl();
-        handleVideoChange();
-    });
-
-    // 4. Selectors to purge from DOM (Shorts, Open in App, Ads)
-    const PURGE_SELECTORS = [
-        'ytm-app-banner',
-        '.mobile-topbar-header .open-in-app',
-        '.topbar-action-button:has(a[href*="app"])',
-        'ytm-header-bar .open-in-app',
-        '.ytm-open-app-banner',
-        '.app-promo-banner',
-        'ytm-upsell-dialog-renderer',
-        '.upsell-dialog',
-        '.promo-interstitial',
-        '.mealbar-promo-renderer',
-        'ytm-mealbar-promo-renderer',
-        '[aria-label*="Open app" i]',
-        '[aria-label*="Get app" i]',
-        '[aria-label*="Get YouTube" i]',
-        '[aria-label*="Open in app" i]',
-        'ytm-reel-shelf-renderer',
-        'ytm-shorts-lockup-view-model-v2',
-        'ytm-shorts-lockup-view-model',
-        'ytd-reel-shelf-renderer',
-        'ytd-rich-shelf-renderer[is-shorts]',
-        'ytm-reel-item-renderer',
-        'ytm-pivot-bar-item-renderer:has([aria-label*="Shorts" i])',
-        'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
-        'ytm-pivot-bar-item-renderer[aria-label*="Shorts" i]',
-        'a[href^="/shorts"]',
-        'ytm-promoted-sparkles-web-renderer',
-        'ytm-promoted-video-renderer',
-        'ytm-companion-ad-renderer',
-        'ytm-ad-slot-renderer',
-        '#player-ads'
-    ];
-
-    function purgeElements(root = document) {
-        for (let i = 0; i < PURGE_SELECTORS.length; i++) {
-            const elements = root.querySelectorAll(PURGE_SELECTORS[i]);
-            for (let j = 0; j < elements.length; j++) {
-                elements[j].remove();
-            }
-        }
-
-        const pivotItems = document.querySelectorAll('ytm-pivot-bar-item-renderer');
-        pivotItems.forEach((item) => {
-            const text = (item.innerText || item.getAttribute('aria-label') || '').toLowerCase();
-            const link = item.querySelector('a');
-            const href = (link?.getAttribute('href') || '').toLowerCase();
-            if (text.includes('shorts') || href.includes('/shorts') || text.includes('open') || href.includes('app')) {
-                item.remove();
-            }
-        });
+    function onNavigate() {
+        if (!leaveShorts()) handleVideoChange();
     }
+
+    for (const method of ['pushState', 'replaceState']) {
+        const original = history[method];
+        history[method] = function (...args) {
+            const result = original.apply(this, args);
+            onNavigate();
+            return result;
+        };
+    }
+    window.addEventListener('popstate', onNavigate);
 
     // 5. Video Ad Fast-Forward & Auto-Skip
     function handleVideoAds() {
@@ -256,28 +192,60 @@
 
     // 8. Custom Liquid Glass Control Bar (Lock, Loop, Sleep Timer, Native Share)
     function injectFeatureControlBar() {
-        const metadataContainer = document.querySelector('ytm-item-section-renderer, .slim-video-metadata-header, #app');
-        if (!metadataContainer || document.getElementById('yt-pure-control-bar')) return;
+        const existing = document.getElementById('yt-pure-control-bar');
+        const videoId = new URLSearchParams(location.search).get('v');
+        const video = document.querySelector('video');
+        if (existing && (location.pathname !== '/watch' || existing.dataset.videoId !== videoId ||
+            existing.playerVideo !== video)) {
+            existing.release();
+            existing.remove();
+            document.getElementById('yt-pure-lock-shield')?.remove();
+            isScreenLocked = false;
+        }
+        if (location.pathname !== '/watch' || !videoId || !video || existing?.isConnected) return;
+        const metadataContainer = document.querySelector('.slim-video-metadata-header, ytm-slim-video-metadata-section-renderer');
+        const playerContainer = video.closest('.video-player-container, #player-container-id, ytm-player, #player');
+        if (!playerContainer && !metadataContainer) return;
 
         const bar = document.createElement('div');
         bar.id = 'yt-pure-control-bar';
         bar.className = 'yt-pure-control-bar';
 
+        bar.dataset.videoId = videoId;
+        bar.playerVideo = video;
+        bar.setAttribute('role', 'group');
+        bar.setAttribute('aria-label', 'Playback tools');
+
+        const speed = document.createElement('select');
+        speed.className = 'yt-pure-btn';
+        speed.setAttribute('aria-label', 'Playback speed');
+        for (const rate of [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]) {
+            speed.add(new Option(rate + '×', String(rate)));
+        }
+        const syncSpeed = () => { speed.value = String(video.playbackRate); };
+        syncSpeed();
+        speed.onchange = () => { video.playbackRate = Number(speed.value); };
+        video.addEventListener('ratechange', syncSpeed);
+        bar.release = () => video.removeEventListener('ratechange', syncSpeed);
+        bar.appendChild(speed);
+
         // 1. Screen Lock Button
         const lockBtn = document.createElement('button');
         lockBtn.className = 'yt-pure-btn';
-        lockBtn.innerText = '🔒 Lock Screen';
+        lockBtn.innerText = 'Lock player';
         lockBtn.onclick = () => {
             isScreenLocked = !isScreenLocked;
-            lockBtn.innerText = isScreenLocked ? '🔓 Screen Locked' : '🔒 Lock Screen';
+            lockBtn.innerText = isScreenLocked ? 'Unlock player' : 'Lock player';
             lockBtn.classList.toggle('active', isScreenLocked);
 
             let shield = document.getElementById('yt-pure-lock-shield');
             if (!shield) {
-                shield = document.createElement('div');
+                shield = document.createElement('button');
+                shield.textContent = 'Unlock player';
+                shield.onclick = () => lockBtn.click();
                 shield.id = 'yt-pure-lock-shield';
                 shield.className = 'yt-pure-lock-shield';
-                document.body.appendChild(shield);
+                (playerContainer || video.parentElement).appendChild(shield);
             }
             shield.classList.toggle('active', isScreenLocked);
 
@@ -290,12 +258,15 @@
         // 2. Loop Video Button
         const loopBtn = document.createElement('button');
         loopBtn.className = 'yt-pure-btn';
-        loopBtn.innerText = '🔁 Loop';
+        loopBtn.innerText = 'Loop';
+        loopBtn.classList.toggle('active', video.loop);
+        loopBtn.setAttribute('aria-pressed', String(video.loop));
         loopBtn.onclick = () => {
             const video = document.querySelector('video');
             if (video) {
                 video.loop = !video.loop;
                 loopBtn.classList.toggle('active', video.loop);
+                loopBtn.setAttribute('aria-pressed', String(video.loop));
                 if (window.AndroidBridge) {
                     window.AndroidBridge.showToast(video.loop ? 'Video looping enabled' : 'Video looping disabled');
                 }
@@ -306,7 +277,7 @@
         // 3. Sleep Timer Button
         const sleepBtn = document.createElement('button');
         sleepBtn.className = 'yt-pure-btn';
-        sleepBtn.innerText = '⏱️ Sleep Timer';
+        sleepBtn.innerText = 'Sleep timer';
         sleepBtn.onclick = () => {
             const minutes = prompt('Set Sleep Timer (minutes to auto-pause):', '30');
             if (minutes !== null) {
@@ -322,7 +293,7 @@
         // 4. Native Share Button
         const shareBtn = document.createElement('button');
         shareBtn.className = 'yt-pure-btn';
-        shareBtn.innerText = '↗️ Share';
+        shareBtn.innerText = 'Share';
         shareBtn.onclick = () => {
             const title = document.title || 'YouTube Video';
             const url = window.location.href;
@@ -335,7 +306,6 @@
         bar.appendChild(shareBtn);
 
         // Insert after video player container
-        const playerContainer = document.querySelector('.video-player-container, #player-container-id, ytm-player');
         if (playerContainer && playerContainer.parentNode) {
             playerContainer.parentNode.insertBefore(bar, playerContainer.nextSibling);
         } else {
@@ -388,7 +358,7 @@
         if (!scheduled) {
             scheduled = true;
             requestAnimationFrame(() => {
-                purgeElements();
+
                 handleVideoAds();
                 setupPlayerGestures();
                 injectFeatureControlBar();
@@ -404,7 +374,7 @@
     });
 
     setInterval(() => {
-        purgeElements();
+
         handleVideoAds();
         setupPlayerGestures();
         injectFeatureControlBar();
@@ -412,12 +382,12 @@
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            purgeElements();
+
             setupPlayerGestures();
             injectFeatureControlBar();
         });
     } else {
-        purgeElements();
+
         setupPlayerGestures();
         injectFeatureControlBar();
     }
