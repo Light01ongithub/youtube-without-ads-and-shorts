@@ -35,40 +35,43 @@ jobs:
       - name: Prepare Named APK
         run: |
           mkdir -p release-apk
-          cp app/build/outputs/apk/debug/*.apk release-apk/YouTubePure-v1.3.0.apk
+          cp app/build/outputs/apk/debug/*.apk release-apk/YouTubePure-v1.2.0.apk
           ls -la release-apk/
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: YouTubePure-v1.3.0-APK
-          path: release-apk/YouTubePure-v1.3.0.apk
+          name: YouTubePure-v1.2.0-APK
+          path: release-apk/YouTubePure-v1.2.0.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish Direct APK to GitHub Releases (Phone Accessible)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.3.0
-          name: "YouTube Pure v1.3.0 (Native Mobile & Watch Controls Edition)"
+          tag_name: v1.2.0
+          name: "YouTube Pure v1.2.0 (Ultimate Feature Edition)"
           body: |
-            ### 📱 Download YouTube Pure v1.3.0
-            Tap **`YouTubePure-v1.3.0.apk`** below to download and install directly on your Android phone.
+            ### 📱 Download YouTube Pure v1.2.0
+            Tap **`YouTubePure-v1.2.0.apk`** below to download and install directly on your Android phone.
 
-            #### 🌟 What's New in v1.3.0:
-            - 🎬 **Preserved YouTube Native Theme**: Blends smoothly with YouTube mobile typography, native action bar styling, and light/dark theme.
-            - 🎯 **Precise Shorts Filtering**: Card-specific filtering ensures neighboring long-form videos in mixed feeds are never accidentally hidden.
-            - ⚡ **Playback Speed Selector**: Dedicated speed selector (`0.5×` to `2×`) in the watch tools bar with live player sync.
-            - 🔒 **Enhanced Player Lock**: Fullscreen unlock button shield attached directly to the video player.
-            - 🏠 **Instant Shorts Redirection**: Any navigation to `/shorts` routes redirects straight to Home (`/`).
-            - 🚀 **Performance & Battery Boost**: Eliminated CPU interval loops, reducing battery usage.
-            - 🚫 **No Video Ads & Banners**: Ad-blocking at network level + auto-skipping.
+            #### 🌟 All Features in v1.2.0:
+            - 🚫 **No Shorts**: Bottom tab & infinite scrolling reels completely eliminated.
+            - 🚫 **Zero Video Ads & Banners**: Ad-blocking at network level + auto-skip.
             - 🚫 **No 'Open in App' Annoyance**: All sticky banners and Play Store redirects purged.
+            - 💎 **Liquid Glass UI**: Frosted acrylic glass navigation, floating cards, and AMOLED dark mode.
+            - ⚡ **Hold for 2× Speed**: Press and hold video player to watch at double speed; release to restore.
+            - ⏪⏩ **Double-Tap Seek**: Double-tap left/right on video for ±10s jump with liquid glass pill feedback.
+            - 🔒 **Player Screen Lock**: Lock button on player overlay to prevent accidental palm touches.
+            - 🔁 **Loop Video**: One-tap toggle to continuously loop current video.
+            - ⏱️ **Sleep Timer**: Built-in sleep timer to auto-pause playback after chosen minutes.
+            - ↗️ **Native Android Share**: Opens Android's system share sheet for video sharing.
+            - 👎 **Return YouTube Dislike**: Live dislike count integration under videos.
             - 📺 **Native Picture-in-Picture (PiP)**: Minimizes to floating window when returning to home screen.
             - 🎧 **Background & Screen-Off Play**: Keeps playing audio when phone screen is locked.
             - 🔄 **Swipe-to-Refresh**: Native pull-down feed refresh with custom red indicator.
-            - 🔑 **Google Sign-in**: Clean Chrome Mobile UA allows logging into your Google Account without 'disallowed_useragent' errors.
-          files: release-apk/YouTubePure-v1.3.0.apk
+            - 🔑 **Google Sign-in Fixed**: Clean Chrome Mobile UA allows logging into your Google Account without 'disallowed_useragent' errors.
+          files: release-apk/YouTubePure-v1.2.0.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,6 +82,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The APK has been packaged and published directly to **GitHub Releases**:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Specific File Name**: \`YouTubePure-v1.3.0.apk\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Direct Release Page**: [View Release & Download APK](https://github.com/${{ github.repository }}/releases/tag/v1.3.0)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Direct APK Download URL**: \`https://github.com/${{ github.repository }}/releases/download/v1.3.0/YouTubePure-v1.3.0.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Specific File Name**: \`YouTubePure-v1.2.0.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct Release Page**: [View Release & Download APK](https://github.com/${{ github.repository }}/releases/tag/v1.2.0)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct APK Download URL**: \`https://github.com/${{ github.repository }}/releases/download/v1.2.0/YouTubePure-v1.2.0.apk\`" >> $GITHUB_STEP_SUMMARY
