@@ -50,11 +50,16 @@ class YouTubeWebViewClient(
             return true
         }
 
-        if (request.isForMainFrame && uri.host in setOf("youtube.com", "www.youtube.com", "m.youtube.com") &&
-            (path == "/shorts" || path.startsWith("/shorts/"))
-        ) {
-            view?.loadUrl("https://m.youtube.com/")
-            return true
+        // 2. Intercept any Shorts link and rewrite to standard watch URL
+        if (path.startsWith("/shorts/")) {
+            val parts = path.split("/")
+            val videoId = parts.getOrNull(2) ?: parts.getOrNull(1)
+            if (!videoId.isNullOrEmpty()) {
+                val cleanId = videoId.substringBefore("?").substringBefore("&")
+                val normalWatchUrl = "https://m.youtube.com/watch?v=$cleanId"
+                view?.loadUrl(normalWatchUrl)
+                return true
+            }
         }
 
         return false
@@ -88,8 +93,7 @@ class YouTubeWebViewClient(
     }
 
     private fun injectCleaners(view: WebView?) {
-        if (view == null || Uri.parse(view.url ?: return).host !in
-            setOf("m.youtube.com", "www.youtube.com", "youtube.com")) return
+        if (view == null) return
 
         // 1. Inject Liquid Glass & Purge Stylesheet
         if (cachedCss.isNotEmpty()) {
@@ -98,7 +102,7 @@ class YouTubeWebViewClient(
                 (function() {
                     var styleId = 'yt-pure-style';
                     var existing = document.getElementById(styleId);
-                    if (!existing && document.documentElement) {
+                    if (!existing) {
                         var style = document.createElement('style');
                         style.id = styleId;
                         style.type = 'text/css';
