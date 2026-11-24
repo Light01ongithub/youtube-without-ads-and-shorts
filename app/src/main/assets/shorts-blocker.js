@@ -192,28 +192,60 @@
 
     // 8. Custom Liquid Glass Control Bar (Lock, Loop, Sleep Timer, Native Share)
     function injectFeatureControlBar() {
-        const metadataContainer = document.querySelector('ytm-item-section-renderer, .slim-video-metadata-header, #app');
-        if (!metadataContainer || document.getElementById('yt-pure-control-bar')) return;
+        const existing = document.getElementById('yt-pure-control-bar');
+        const videoId = new URLSearchParams(location.search).get('v');
+        const video = document.querySelector('video');
+        if (existing && (location.pathname !== '/watch' || existing.dataset.videoId !== videoId ||
+            existing.playerVideo !== video)) {
+            existing.release();
+            existing.remove();
+            document.getElementById('yt-pure-lock-shield')?.remove();
+            isScreenLocked = false;
+        }
+        if (location.pathname !== '/watch' || !videoId || !video || existing?.isConnected) return;
+        const metadataContainer = document.querySelector('.slim-video-metadata-header, ytm-slim-video-metadata-section-renderer');
+        const playerContainer = video.closest('.video-player-container, #player-container-id, ytm-player, #player');
+        if (!playerContainer && !metadataContainer) return;
 
         const bar = document.createElement('div');
         bar.id = 'yt-pure-control-bar';
         bar.className = 'yt-pure-control-bar';
 
+        bar.dataset.videoId = videoId;
+        bar.playerVideo = video;
+        bar.setAttribute('role', 'group');
+        bar.setAttribute('aria-label', 'Playback tools');
+
+        const speed = document.createElement('select');
+        speed.className = 'yt-pure-btn';
+        speed.setAttribute('aria-label', 'Playback speed');
+        for (const rate of [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]) {
+            speed.add(new Option(rate + '×', String(rate)));
+        }
+        const syncSpeed = () => { speed.value = String(video.playbackRate); };
+        syncSpeed();
+        speed.onchange = () => { video.playbackRate = Number(speed.value); };
+        video.addEventListener('ratechange', syncSpeed);
+        bar.release = () => video.removeEventListener('ratechange', syncSpeed);
+        bar.appendChild(speed);
+
         // 1. Screen Lock Button
         const lockBtn = document.createElement('button');
         lockBtn.className = 'yt-pure-btn';
-        lockBtn.innerText = '🔒 Lock Screen';
+        lockBtn.innerText = 'Lock player';
         lockBtn.onclick = () => {
             isScreenLocked = !isScreenLocked;
-            lockBtn.innerText = isScreenLocked ? '🔓 Screen Locked' : '🔒 Lock Screen';
+            lockBtn.innerText = isScreenLocked ? 'Unlock player' : 'Lock player';
             lockBtn.classList.toggle('active', isScreenLocked);
 
             let shield = document.getElementById('yt-pure-lock-shield');
             if (!shield) {
-                shield = document.createElement('div');
+                shield = document.createElement('button');
+                shield.textContent = 'Unlock player';
+                shield.onclick = () => lockBtn.click();
                 shield.id = 'yt-pure-lock-shield';
                 shield.className = 'yt-pure-lock-shield';
-                document.body.appendChild(shield);
+                (playerContainer || video.parentElement).appendChild(shield);
             }
             shield.classList.toggle('active', isScreenLocked);
 
@@ -226,12 +258,15 @@
         // 2. Loop Video Button
         const loopBtn = document.createElement('button');
         loopBtn.className = 'yt-pure-btn';
-        loopBtn.innerText = '🔁 Loop';
+        loopBtn.innerText = 'Loop';
+        loopBtn.classList.toggle('active', video.loop);
+        loopBtn.setAttribute('aria-pressed', String(video.loop));
         loopBtn.onclick = () => {
             const video = document.querySelector('video');
             if (video) {
                 video.loop = !video.loop;
                 loopBtn.classList.toggle('active', video.loop);
+                loopBtn.setAttribute('aria-pressed', String(video.loop));
                 if (window.AndroidBridge) {
                     window.AndroidBridge.showToast(video.loop ? 'Video looping enabled' : 'Video looping disabled');
                 }
@@ -242,7 +277,7 @@
         // 3. Sleep Timer Button
         const sleepBtn = document.createElement('button');
         sleepBtn.className = 'yt-pure-btn';
-        sleepBtn.innerText = '⏱️ Sleep Timer';
+        sleepBtn.innerText = 'Sleep timer';
         sleepBtn.onclick = () => {
             const minutes = prompt('Set Sleep Timer (minutes to auto-pause):', '30');
             if (minutes !== null) {
@@ -258,7 +293,7 @@
         // 4. Native Share Button
         const shareBtn = document.createElement('button');
         shareBtn.className = 'yt-pure-btn';
-        shareBtn.innerText = '↗️ Share';
+        shareBtn.innerText = 'Share';
         shareBtn.onclick = () => {
             const title = document.title || 'YouTube Video';
             const url = window.location.href;
@@ -271,7 +306,6 @@
         bar.appendChild(shareBtn);
 
         // Insert after video player container
-        const playerContainer = document.querySelector('.video-player-container, #player-container-id, ytm-player');
         if (playerContainer && playerContainer.parentNode) {
             playerContainer.parentNode.insertBefore(bar, playerContainer.nextSibling);
         } else {

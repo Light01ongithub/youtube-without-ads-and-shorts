@@ -85,37 +85,29 @@ ytm-companion-ad-renderer, ytm-ad-slot-renderer, #player-ads,
     transform: translateX(-50%) scale(1);
 }
 
-/* Floating Liquid Glass Control Bar (Lock, Sleep Timer, Loop) */
+/* Match YouTube's horizontally scrolling watch actions. */
 .yt-pure-control-bar {
     display: flex;
-    align-items: center;
     gap: 8px;
-    padding: 6px 14px;
-    margin: 8px 12px;
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    padding: 4px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
 .yt-pure-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 14px;
-    color: #f0f0f0;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    flex: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 24px;
+    background: var(--yt-spec-badge-chip-background, #eee);
+    color: var(--yt-spec-text-primary, #0f0f0f);
+    font: 500 14px Roboto, sans-serif;
 }
 
 .yt-pure-btn.active {
-    background: rgba(255, 51, 75, 0.3);
-    border-color: #ff334b;
-    color: #ff334b;
+    background: var(--yt-spec-text-primary, #0f0f0f);
+    color: var(--yt-spec-base-background, white);
 }
 
 /* Screen Lock Fullscreen Shield */
@@ -132,6 +124,9 @@ ytm-companion-ad-renderer, ytm-ad-slot-renderer, #player-ads,
 
 .yt-pure-lock-shield.active {
     display: block;
+    color: white;
+    text-shadow: 0 1px 4px black;
+    border: 0;
 }
 
 /* Return YouTube Dislike Badge */
