@@ -4,6 +4,10 @@
 (function () {
     'use strict';
 
+    if (!document.documentElement || !['m.youtube.com', 'www.youtube.com', 'youtube.com'].includes(location.hostname)) return;
+    if (window.ytPureInitialized) return;
+    window.ytPureInitialized = true;
+
     // 1. Force Background Playback: Prevent YouTube from pausing when tab/screen is unfocused
     try {
         Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
@@ -27,97 +31,29 @@
         return origOpen.apply(this, arguments);
     };
 
-    // 3. URL Interceptor: Redirect any /shorts/ID immediately to standard /watch?v=ID
-    function redirectShortsUrl(url) {
-        try {
-            const parsed = new URL(url || window.location.href);
-            if (parsed.pathname.startsWith('/shorts/')) {
-                const parts = parsed.pathname.split('/');
-                const id = parts[2] || parts[1];
-                if (id) {
-                    const cleanId = id.split('?')[0].split('&')[0];
-                    const target = '/watch?v=' + cleanId;
-                    console.log('YouTubePure: Redirecting Short -> Normal Watch:', target);
-                    window.location.replace(target);
-                    return true;
-                }
-            }
-        } catch (e) {}
+    function leaveShorts() {
+        if (/^\/shorts(?:\/|$)/.test(location.pathname)) {
+            location.replace('/');
+            return true;
+        }
         return false;
     }
 
-    redirectShortsUrl();
+    if (leaveShorts()) return;
 
-    // Hook SPA History pushState/replaceState
-    const originalPushState = history.pushState;
-    history.pushState = function () {
-        originalPushState.apply(this, arguments);
-        redirectShortsUrl(arguments[2]);
-        handleVideoChange();
-    };
-    const originalReplaceState = history.replaceState;
-    history.replaceState = function () {
-        originalReplaceState.apply(this, arguments);
-        redirectShortsUrl(arguments[2]);
-        handleVideoChange();
-    };
-    window.addEventListener('popstate', () => {
-        redirectShortsUrl();
-        handleVideoChange();
-    });
-
-    // 4. Selectors to purge from DOM (Shorts, Open in App, Ads)
-    const PURGE_SELECTORS = [
-        'ytm-app-banner',
-        '.mobile-topbar-header .open-in-app',
-        '.topbar-action-button:has(a[href*="app"])',
-        'ytm-header-bar .open-in-app',
-        '.ytm-open-app-banner',
-        '.app-promo-banner',
-        'ytm-upsell-dialog-renderer',
-        '.upsell-dialog',
-        '.promo-interstitial',
-        '.mealbar-promo-renderer',
-        'ytm-mealbar-promo-renderer',
-        '[aria-label*="Open app" i]',
-        '[aria-label*="Get app" i]',
-        '[aria-label*="Get YouTube" i]',
-        '[aria-label*="Open in app" i]',
-        'ytm-reel-shelf-renderer',
-        'ytm-shorts-lockup-view-model-v2',
-        'ytm-shorts-lockup-view-model',
-        'ytd-reel-shelf-renderer',
-        'ytd-rich-shelf-renderer[is-shorts]',
-        'ytm-reel-item-renderer',
-        'ytm-pivot-bar-item-renderer:has([aria-label*="Shorts" i])',
-        'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
-        'ytm-pivot-bar-item-renderer[aria-label*="Shorts" i]',
-        'a[href^="/shorts"]',
-        'ytm-promoted-sparkles-web-renderer',
-        'ytm-promoted-video-renderer',
-        'ytm-companion-ad-renderer',
-        'ytm-ad-slot-renderer',
-        '#player-ads'
-    ];
-
-    function purgeElements(root = document) {
-        for (let i = 0; i < PURGE_SELECTORS.length; i++) {
-            const elements = root.querySelectorAll(PURGE_SELECTORS[i]);
-            for (let j = 0; j < elements.length; j++) {
-                elements[j].remove();
-            }
-        }
-
-        const pivotItems = document.querySelectorAll('ytm-pivot-bar-item-renderer');
-        pivotItems.forEach((item) => {
-            const text = (item.innerText || item.getAttribute('aria-label') || '').toLowerCase();
-            const link = item.querySelector('a');
-            const href = (link?.getAttribute('href') || '').toLowerCase();
-            if (text.includes('shorts') || href.includes('/shorts') || text.includes('open') || href.includes('app')) {
-                item.remove();
-            }
-        });
+    function onNavigate() {
+        if (!leaveShorts()) handleVideoChange();
     }
+
+    for (const method of ['pushState', 'replaceState']) {
+        const original = history[method];
+        history[method] = function (...args) {
+            const result = original.apply(this, args);
+            onNavigate();
+            return result;
+        };
+    }
+    window.addEventListener('popstate', onNavigate);
 
     // 5. Video Ad Fast-Forward & Auto-Skip
     function handleVideoAds() {
@@ -388,7 +324,7 @@
         if (!scheduled) {
             scheduled = true;
             requestAnimationFrame(() => {
-                purgeElements();
+
                 handleVideoAds();
                 setupPlayerGestures();
                 injectFeatureControlBar();
@@ -404,7 +340,7 @@
     });
 
     setInterval(() => {
-        purgeElements();
+
         handleVideoAds();
         setupPlayerGestures();
         injectFeatureControlBar();
@@ -412,12 +348,12 @@
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            purgeElements();
+
             setupPlayerGestures();
             injectFeatureControlBar();
         });
     } else {
-        purgeElements();
+
         setupPlayerGestures();
         injectFeatureControlBar();
     }

@@ -1,168 +1,37 @@
-/* ==========================================================================
-   YouTube Pure: Liquid Glass UI & Advanced Feature Overlay
-   ========================================================================== */
-
-/* --------------------------------------------------------------------------
-   1. TOTAL ERADICATION: "Open in App", App Banners & Upsells
-   -------------------------------------------------------------------------- */
-ytm-app-banner,
-.mobile-topbar-header .open-in-app,
-.topbar-action-button:has(a[href*="app"]),
-ytm-header-bar .open-in-app,
-.ytm-open-app-banner,
-.app-promo-banner,
-ytm-upsell-dialog-renderer,
-.upsell-dialog,
-.promo-interstitial,
-.mealbar-promo-renderer,
-ytm-mealbar-promo-renderer,
-[aria-label*="Open app" i],
-[aria-label*="Get app" i],
-[aria-label*="Get YouTube" i],
-[aria-label*="Open in app" i],
-a[href*="market://"],
-a[href*="play.google.com/store/apps/details?id=com.google.android.youtube"],
-.ytm-pivot-bar-item-renderer:has([aria-label*="Open" i]),
-ytm-pivot-bar-item-renderer:has(a[href*="app"]),
-div[class*="upsell"],
-div[class*="open-in-app"] {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    max-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* --------------------------------------------------------------------------
-   2. TOTAL ERADICATION: Shorts (Bottom Bar, Feed Shelves, Carousels)
-   -------------------------------------------------------------------------- */
-ytm-pivot-bar-item-renderer:has([aria-label*="Shorts" i]),
-ytm-pivot-bar-item-renderer:has(.pivot-shorts),
-ytm-pivot-bar-item-renderer[aria-label*="Shorts" i],
-.pivot-bar-item-tab[aria-label*="Shorts" i],
-[aria-label="Shorts" i],
-a[href^="/shorts"],
-ytm-pivot-bar-renderer > ytm-pivot-bar-item-renderer:nth-child(2):has(a[href*="shorts"]),
+/* Keep YouTube's mobile theme, typography, player and navigation. */
 ytm-reel-shelf-renderer,
-ytm-shorts-lockup-view-model-v2,
-ytm-shorts-lockup-view-model,
 ytd-reel-shelf-renderer,
 ytd-rich-shelf-renderer[is-shorts],
-ytm-rich-shelf-renderer:has(ytm-shorts-lockup-view-model-v2),
+ytm-shorts-lockup-view-model-v2,
+ytm-shorts-lockup-view-model,
 ytm-reel-item-renderer,
-grid-shelf-view-model:has(ytm-shorts-lockup-view-model-v2),
-ytm-item-section-renderer:has(ytm-reel-shelf-renderer),
-ytm-item-section-renderer:has(ytm-shorts-lockup-view-model-v2),
-ytm-item-section-renderer:has(ytm-shorts-lockup-view-model),
-div[is-shorts],
 [tab-identifier="FEshorts"],
-[data-endpoint*="shorts"] {
+ytm-pivot-bar-item-renderer[aria-label="Shorts" i],
+a[href^="/shorts/"],
+a[href="/shorts"] {
     display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    max-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    pointer-events: none !important;
 }
 
-/* --------------------------------------------------------------------------
-   3. TOTAL ERADICATION: Banner Ads, Sponsored Sparkles, Video Overlays
-   -------------------------------------------------------------------------- */
-ytm-promoted-sparkles-web-renderer,
-ytm-promoted-video-renderer,
-ytm-companion-ad-renderer,
-.ad-container,
-.ad-interrupting,
-.ytp-ad-module,
-.ytp-ad-overlay-container,
-.ytp-ad-player-overlay,
-.ytp-ad-text,
-.video-ads,
-ytm-ad-slot-renderer,
-#player-ads {
+/* Match individual cards and tabs without hiding neighboring long-form videos. */
+:is(ytm-video-with-context-renderer, ytm-compact-video-renderer, ytm-media-item,
+    ytm-pivot-bar-item-renderer, ytd-rich-item-renderer):has(a[href^="/shorts/"]),
+ytm-pivot-bar-item-renderer:has(.pivot-shorts, [aria-label="Shorts" i], a[href="/shorts"]),
+ytm-rich-shelf-renderer:has(ytm-shorts-lockup-view-model-v2),
+grid-shelf-view-model:has(ytm-shorts-lockup-view-model-v2) {
     display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
 }
 
-/* --------------------------------------------------------------------------
-   4. LIQUID GLASS UI (Glassmorphic Elements)
-   -------------------------------------------------------------------------- */
-html, body, #app, ytm-app {
-    background-color: #070709 !important;
-    color: #f1f1f1 !important;
+ytm-app-banner, .open-in-app, .ytm-open-app-banner, .app-promo-banner,
+ytm-upsell-dialog-renderer, .upsell-dialog, .promo-interstitial,
+.mealbar-promo-renderer, ytm-mealbar-promo-renderer,
+[aria-label="Open app" i], [aria-label="Get app" i], [aria-label="Get YouTube" i],
+[aria-label="Open in app" i], a[href^="market://"],
+a[href^="https://play.google.com/store/apps/details?id=com.google.android.youtube"],
+ytm-promoted-sparkles-web-renderer, ytm-promoted-video-renderer,
+ytm-companion-ad-renderer, ytm-ad-slot-renderer, #player-ads,
+.ytp-ad-overlay-container, .video-ads {
+    display: none !important;
 }
-
-/* Frosted Acrylic Header */
-ytm-header-bar,
-.mobile-topbar-header,
-header.masthead {
-    background: rgba(12, 12, 16, 0.72) !important;
-    backdrop-filter: blur(28px) saturate(190%) !important;
-    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45) !important;
-}
-
-/* Frosted Acrylic Bottom Navigation */
-ytm-pivot-bar-renderer {
-    background: rgba(12, 12, 16, 0.75) !important;
-    backdrop-filter: blur(28px) saturate(190%) !important;
-    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.09) !important;
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5) !important;
-    border-radius: 20px 20px 0 0 !important;
-}
-
-/* Filter Chips (Pill Buttons) */
-ytm-chip-cloud-chip-renderer {
-    background: rgba(255, 255, 255, 0.07) !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 24px !important;
-    color: #e5e5e5 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
-}
-
-ytm-chip-cloud-chip-renderer[aria-selected="true"],
-ytm-chip-cloud-chip-renderer.selected {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.12)) !important;
-    border-color: rgba(255, 255, 255, 0.4) !important;
-    color: #ffffff !important;
-}
-
-/* Search Bar */
-.search-input-container,
-.searchbox {
-    background: rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 28px !important;
-}
-
-/* Rounded Cards */
-ytm-media-item,
-ytm-video-with-context-renderer,
-ytm-compact-video-renderer {
-    border-radius: 18px !important;
-    overflow: hidden !important;
-}
-
-.media-item-thumbnail-container,
-.video-thumbnail-container-compact {
-    border-radius: 16px !important;
-    overflow: hidden !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
-}
-
-/* --------------------------------------------------------------------------
-   5. ADVANCED FEATURE OVERLAYS: 2x Speed, Screen Lock, Sleep Timer, Dislikes
-   -------------------------------------------------------------------------- */
 
 /* Double-Tap Seek & Hold 2x Indicators */
 .yt-pure-floating-pill {
